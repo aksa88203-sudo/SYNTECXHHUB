@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maze Solver — A* Search | Syntecxhub</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f4fb;
+      --surface: #ffffff;
+      --surface2: #f0eef9;
+      --border: #d4d0e8;
+      --text: #1e1a3a;
+      --muted: #6b648a;
+      --accent: #534AB7;
+      --accent-light: #EEEDFE;
+      --start: #1D9E75;
+      --goal: #534AB7;
+      --wall: #2C2C2A;
+      --visited: #B5D4F4;
+      --frontier: #E6F1FB;
+      --path: #EF9F27;
+      --radius: 8px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-top: 0.4rem;
+    }
+
+    .badge {
+      display: inline-block;
+      background: var(--accent-light);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 0.6rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .card {
+      background: var(--surface);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      padding: 1.5rem;
+      max-width: 780px;
+      margin: 0 auto 1.5rem;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.75rem;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    button {
+      cursor: pointer;
+      font-size: 13px;
+      padding: 7px 16px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      transition: background 0.15s, transform 0.1s;
+      font-weight: 500;
+    }
+
+    button:hover { background: var(--surface2); }
+    button:active { transform: scale(0.97); }
+
+    button.mode-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    button.solve-btn {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      font-weight: 600;
+      padding: 7px 20px;
+    }
+
+    button.solve-btn:hover { background: #3c35a0; }
+
+    select {
+      font-size: 13px;
+      padding: 7px 12px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    label {
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .leg {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+
+    #grid-wrap {
+      overflow: auto;
+      padding: 4px 0;
+    }
+
+    #grid {
+      display: inline-grid;
+      gap: 2px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px;
+      user-select: none;
+    }
+
+    .cell {
+      width: 30px;
+      height: 30px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.07s;
+      border: 1px solid transparent;
+    }
+
+    .cell.empty    { background: var(--surface); border-color: var(--border); }
+    .cell.wall     { background: var(--wall); border-color: #111; }
+    .cell.start    { background: var(--start); border-color: #0f6e56; }
+    .cell.goal     { background: var(--goal); border-color: #3c35a0; }
+    .cell.visited  { background: var(--visited); border-color: #90bce8; }
+    .cell.frontier { background: var(--frontier); border-color: #b5d4f4; }
+    .cell.path     { background: var(--path); border-color: #c98210; }
+
+    .cell:hover { filter: brightness(0.92); }
+
+    #status {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 0.6rem;
+      min-height: 20px;
+    }
+
+    .stats {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    .stat {
+      background: var(--surface2);
+      border-radius: var(--radius);
+      padding: 10px 16px;
+      flex: 1;
+      min-width: 100px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-top: 2px;
+    }
+
+    .algo-info {
+      background: var(--accent-light);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      font-size: 13px;
+      color: var(--accent);
+      line-height: 1.6;
+    }
+
+    .algo-info strong { font-weight: 600; }
+
+    footer {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 600px) {
+      .cell { width: 22px; height: 22px; }
+      header h1 { font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="badge">Syntecxhub — AI Internship Week 1</div>
+  <h1>Maze Solver — A* Search</h1>
+  <p>Draw walls, set start &amp; goal, then hit Solve to watch A* find the shortest path.</p>
+</header>
+
+<!-- Controls -->
+<div class="card">
+  <div class="section-title">Tools</div>
+  <div class="controls">
+    <button class="mode-btn active" id="btnWall"  onclick="setMode('wall')">Draw walls</button>
+    <button class="mode-btn"        id="btnStart" onclick="setMode('start')">Set start</button>
+    <button class="mode-btn"        id="btnGoal"  onclick="setMode('goal')">Set goal</button>
+    <button class="mode-btn"        id="btnErase" onclick="setMode('erase')">Erase</button>
+    <button onclick="clearPath()">Clear path</button>
+    <button onclick="resetMaze()">Reset maze</button>
+    <label>Heuristic:
+      <select id="heuristic">
+        <option value="manhattan">Manhattan</option>
+        <option value="euclidean">Euclidean</option>
+      </select>
+    </label>
+    <button class="solve-btn" onclick="runAStar()">▶ Solve</button>
+  </div>
+</div>
+
+<!-- Grid -->
+<div class="card">
+  <div class="section-title">Maze</div>
+  <div id="grid-wrap"><div id="grid"></div></div>
+  <div id="status">Click cells to draw walls, then press Solve.</div>
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Cells visited</div><div class="stat-value" id="sVisited">—</div></div>
+    <div class="stat"><div class="stat-label">Path length</div><div class="stat-value"  id="sPath">—</div></div>
+    <div class="stat"><div class="stat-label">Path cost</div><div class="stat-value"    id="sCost">—</div></div>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="card">
+  <div class="section-title">Legend</div>
+  <div class="legend">
+    <div class="leg"><div class="dot" style="background:#1D9E75"></div> Start</div>
+    <div class="leg"><div class="dot" style="background:#534AB7"></div> Goal</div>
+    <div class="leg"><div class="dot" style="background:#2C2C2A"></div> Wall</div>
+    <div class="leg"><div class="dot" style="background:#B5D4F4"></div> Visited</div>
+    <div class="leg"><div class="dot" style="background:#E6F1FB;border-color:#b5d4f4"></div> Frontier</div>
+    <div class="leg"><div class="dot" style="background:#EF9F27"></div> Shortest path</div>
+  </div>
+</div>
+
+<!-- Algorithm Info -->
+<div class="card">
+  <div class="section-title">How A* works</div>
+  <div class="algo-info">
+    <strong>A* (A-star)</strong> is an informed search algorithm. It evaluates each node by combining
+    <strong>g(n)</strong> — the actual cost from start to node — and <strong>h(n)</strong> — the heuristic estimate
+    to the goal: <strong>f(n) = g(n) + h(n)</strong>.<br><br>
+    <strong>Manhattan heuristic</strong>: |Δrow| + |Δcol| — optimal for grid movement with 4 directions.<br>
+    <strong>Euclidean heuristic</strong>: √(Δrow² + Δcol²) — straight-line distance, admissible but may explore more cells.<br><br>
+    A* guarantees the shortest path as long as the heuristic never overestimates the true cost (admissibility).
+  </div>
+</div>
+
+<footer>Syntecxhub Internship Program — Artificial Intelligence | Project 1</footer>
+
+<script>
+const ROWS = 15, COLS = 22;
+let grid = [], mode = 'wall', startCell = [2, 2], goalCell = [12, 19];
+let solving = false, animTimers = [];
+
+function initGrid() {
+  grid = [];
+  for (let r = 0; r < ROWS; r++) {
+    grid.push([]);
+    for (let c = 0; c < COLS; c++) grid[r].push('empty');
+  }
+  grid[startCell[0]][startCell[1]] = 'start';
+  grid[goalCell[0]][goalCell[1]] = 'goal';
+  addDefaultWalls();
+}
+
+function addDefaultWalls() {
+  const walls = [
+    [1,5],[2,5],[3,5],[4,5],[5,5],[6,5],[7,5],
+    [4,10],[5,10],[6,10],[7,10],[8,10],[9,10],[3,15],
+    [4,15],[5,15],[6,15],[7,15],[8,15],[9,15],[10,15],
+    [10,7],[10,8],[10,9],[10,10],[10,11],[10,12],[10,13],
+    [1,10],[1,11],[1,12],[1,13],[1,14],[1,15]
+  ];
+  walls.forEach(([r, c]) => {
+    if (!(r === startCell[0] && c === startCell[1]) && !(r === goalCell[0] && c === goalCell[1]))
+      grid[r][c] = 'wall';
+  });
+}
+
+function renderGrid() {
+  const g = document.getElementById('grid');
+  g.style.gridTemplateColumns = `repeat(${COLS}, 30px)`;
+  g.innerHTML = '';
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const d = document.createElement('div');
+      d.className = 'cell ' + grid[r][c];
+      d.dataset.r = r; d.dataset.c = c;
+      d.addEventListener('mousedown', () => onCell(r, c));
+      d.addEventListener('mouseover', e => { if (e.buttons === 1) onCell(r, c); });
+      g.appendChild(d);
+    }
+  }
+}
+
+function updateCell(r, c) {
+  const idx = r * COLS + c;
+  document.querySelectorAll('.cell')[idx].className = 'cell ' + grid[r][c];
+}
+
+function onCell(r, c) {
+  if (solving) return;
+  const cur = grid[r][c];
+  if (mode === 'wall') {
+    if (['empty','visited','frontier','path'].includes(cur)) setCell(r, c, 'wall');
+  } else if (mode === 'erase') {
+    if (cur !== 'start' && cur !== 'goal') setCell(r, c, 'empty');
+  } else if (mode === 'start') {
+    setCell(startCell[0], startCell[1], 'empty');
+    startCell = [r, c]; setCell(r, c, 'start');
+  } else if (mode === 'goal') {
+    setCell(goalCell[0], goalCell[1], 'empty');
+    goalCell = [r, c]; setCell(r, c, 'goal');
+  }
+}
+
+function setCell(r, c, val) { grid[r][c] = val; updateCell(r, c); }
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  const map = { wall: 'btnWall', start: 'btnStart', goal: 'btnGoal', erase: 'btnErase' };
+  document.getElementById(map[m]).classList.add('active');
+}
+
+function clearPath() {
+  animTimers.forEach(clearTimeout);
+  animTimers = []; solving = false;
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (['visited','path','frontier'].includes(grid[r][c])) setCell(r, c, 'empty');
+  document.getElementById('status').textContent = 'Path cleared. Ready to solve.';
+  ['sVisited','sPath','sCost'].forEach(id => document.getElementById(id).textContent = '—');
+}
+
+function resetMaze() {
+  clearPath();
+  initGrid();
+  renderGrid();
+  document.getElementById('status').textContent = 'Maze reset. Draw walls and press Solve.';
+}
+
+function heuristic(r1, c1, r2, c2) {
+  return document.getElementById('heuristic').value === 'euclidean'
+    ? Math.sqrt((r1 - r2) ** 2 + (c1 - c2) ** 2)
+    : Math.abs(r1 - r2) + Math.abs(c1 - c2);
+}
+
+function runAStar() {
+  if (solving) return;
+  clearPath();
+  solving = true;
+  document.getElementById('status').textContent = 'Solving…';
+
+  const [sr, sc] = startCell, [gr, gc] = goalCell;
+  const key = (r, c) => r * 1000 + c;
+  const gScore = new Map(), fScore = new Map(), cameFrom = new Map();
+  const openSet = new Set();
+
+  gScore.set(key(sr, sc), 0);
+  fScore.set(key(sr, sc), heuristic(sr, sc, gr, gc));
+  openSet.add(key(sr, sc));
+
+  const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+  const steps = [];
+
+  while (openSet.size > 0) {
+    let cur = null, best = Infinity;
+    openSet.forEach(k => { const f = fScore.get(k) ?? Infinity; if (f < best) { best = f; cur = k; } });
+    if (cur === null) break;
+    openSet.delete(cur);
+    const r = Math.floor(cur / 1000), c = cur % 1000;
+
+    if (r === gr && c === gc) {
+      let path = [], node = key(gr, gc);
+      while (cameFrom.has(node)) { path.push(node); node = cameFrom.get(node); }
+      steps.push({ type: 'done', path: path.reverse(), visited: steps.filter(s => s.type === 'visit').length });
+      break;
+    }
+
+    steps.push({ type: 'visit', r, c });
+
+    for (const [dr, dc] of dirs) {
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+      if (grid[nr][nc] === 'wall') continue;
+      const nk = key(nr, nc);
+      const ng = (gScore.get(cur) ?? 0) + 1;
+      if (ng < (gScore.get(nk) ?? Infinity)) {
+        cameFrom.set(nk, cur);
+        gScore.set(nk, ng);
+        fScore.set(nk, ng + heuristic(nr, nc, gr, gc));
+        if (!openSet.has(nk)) { openSet.add(nk); steps.push({ type: 'frontier', r: nr, c: nc }); }
+      }
+    }
+  }
+
+  if (!steps.find(s => s.type === 'done')) steps.push({ type: 'no_path' });
+
+  let i = 0;
+  function animate() {
+    if (i >= steps.length) { solving = false; return; }
+    const s = steps[i++];
+    if (s.type === 'visit') {
+      if (!(s.r === sr && s.c === sc) && !(s.r === gr && s.c === gc))
+        setCell(s.r, s.c, 'visited');
+    } else if (s.type === 'frontier') {
+      if (grid[s.r][s.c] === 'empty') setCell(s.r, s.c, 'frontier');
+    } else if (s.type === 'done') {
+      s.path.forEach(pk => {
+        const pr = Math.floor(pk / 1000), pc = pk % 1000;
+        if (!(pr === sr && pc === sc) && !(pr === gr && pc === gc)) setCell(pr, pc, 'path');
+      });
+      document.getElementById('sVisited').textContent = s.visited;
+      document.getElementById('sPath').textContent = s.path.length + 1;
+      document.getElementById('sCost').textContent = s.path.length + 1;
+      document.getElementById('status').textContent = '✓ Path found! Orange = shortest path · Blue = explored cells.';
+      solving = false;
+      return;
+    } else if (s.type === 'no_path') {
+      document.getElementById('status').textContent = '✗ No path found — goal is unreachable!';
+      solving = false;
+      return;
+    }
+    const delay = i < steps.length - 20 ? 14 : 70;
+    animTimers.push(setTimeout(animate, delay));
+  }
+
+  animate();
+}
+
+initGrid();
+renderGrid();
+</script>
+</body>
+</html>
